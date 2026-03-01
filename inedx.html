@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#ffffff;
+  font-family:'Nunito',sans-serif;
+  color:#2c3442;
+}
+.app{
+  max-width:420px;
+  margin:auto;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+/* 카드 */
+.card{
+  background:#ffffff;
+  border-radius:18px;
+  border:1px solid #e6eefc;
+  box-shadow:0 8px 22px rgba(140,180,240,.22);
+  padding:14px;
+}
+
+/* ── CALENDAR ── */
+.cal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
+}
+.cal-title{
+  font-family:'DM Serif Display',serif;
+  font-size:18px;
+  color:#4a6fa8;
+}
+.cal-nav button{
+  border:none;
+  background:#edf4ff;
+  border-radius:10px;
+  padding:4px 10px;
+  font-weight:700;
+  color:#5f86c6;
+}
+.cal-grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:6px;
+}
+.day{
+  aspect-ratio:1;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  background:#f3f8ff;
+  font-size:13px;
+  font-weight:600;
+}
+.day.today{
+  background:#9fc5ff;
+  color:white;
+}
+.day.selected{
+  outline:2px solid #9fc5ff;
+  background:#eef5ff;
+}
+
+/* ── TODO ── */
+.todo-title{
+  font-family:'DM Serif Display',serif;
+  font-size:17px;
+  margin-bottom:8px;
+  color:#4a6fa8;
+}
+.todo-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  background:#f0f6ff;
+  border-radius:12px;
+  margin-bottom:6px;
+  cursor:pointer;
+  transition:.15s;
+}
+.todo-item.done{
+  opacity:.55;
+}
+.todo-check{
+  width:18px;height:18px;
+  border-radius:50%;
+  border:2px solid #9fc5ff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:white;
+  font-size:12px;
+}
+.todo-item.done .todo-check{
+  background:#9fc5ff;
+}
+.todo-text{
+  font-size:14px;
+  font-weight:600;
+}
+.todo-item.done .todo-text{
+  text-decoration:line-through;
+  color:#9aa5b5;
+}
+.todo-add{
+  display:flex;
+  gap:6px;
+  margin-top:8px;
+}
+.todo-add input{
+  flex:1;
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid #dbe7ff;
+  background:#f6f9ff;
+}
+.todo-add button{
+  padding:8px 14px;
+  border:none;
+  border-radius:10px;
+  background:#6fa8ff;
+  color:white;
+  font-weight:700;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- CALENDAR -->
+  <div class="card">
+    <div class="cal-header">
+      <div class="cal-title" id="monthTitle"></div>
+      <div class="cal-nav">
+        <button onclick="moveMonth(-1)">‹</button>
+        <button onclick="moveMonth(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="calendar"></div>
+  </div>
+
+  <!-- TODO -->
+  <div class="card">
+    <div class="todo-title" id="todoTitle"></div>
+    <div id="todoList"></div>
+    <div class="todo-add">
+      <input id="todoInput" placeholder="할 일 입력">
+      <button onclick="addTodo()">+</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const today=new Date();
+let y=today.getFullYear(),m=today.getMonth();
+let selected=format(today);
+let todos=JSON.parse(localStorage.getItem('todos')||'{}');
+
+function format(d){return d.toISOString().split('T')[0];}
+
+/* CALENDAR */
+function renderCal(){
+  monthTitle.textContent=`${y}.${String(m+1).padStart(2,'0')}`;
+  calendar.innerHTML='';
+  const last=new Date(y,m+1,0).getDate();
+  for(let i=1;i<=last;i++){
+    const key=`${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+    const cls=['day'];
+    if(key===format(today))cls.push('today');
+    if(key===selected)cls.push('selected');
+    calendar.innerHTML+=`<div class="${cls.join(' ')}" onclick="selectDay('${key}')">${i}</div>`;
+  }
+}
+function moveMonth(d){
+  m+=d;
+  if(m<0){m=11;y--}
+  if(m>11){m=0;y++}
+  renderCal();
+}
+function selectDay(k){
+  selected=k;
+  renderTodo();
+  renderCal();
+}
+
+/* TODO */
+function renderTodo(){
+  todoTitle.textContent=selected;
+  todoList.innerHTML='';
+  (todos[selected]||[]).forEach((t,i)=>{
+    todoList.innerHTML+=`
+      <div class="todo-item ${t.done?'done':''}" onclick="toggleTodo(${i})">
+        <div class="todo-check">${t.done?'✓':''}</div>
+        <div class="todo-text">${t.text}</div>
+      </div>`;
+  });
+}
+function addTodo(){
+  const t=todoInput.value.trim();
+  if(!t)return;
+  if(!todos[selected])todos[selected]=[];
+  todos[selected].push({text:t,done:false});
+  localStorage.setItem('todos',JSON.stringify(todos));
+  todoInput.value='';
+  renderTodo();
+}
+function toggleTodo(i){
+  todos[selected][i].done=!todos[selected][i].done;
+  localStorage.setItem('todos',JSON.stringify(todos));
+  renderTodo();
+}
+
+/* INIT */
+renderCal();
+renderTodo();
+</script>
+</body>
+</html>
